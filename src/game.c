@@ -7,50 +7,81 @@
 #include <SDL2/SDL_stdinc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
-void set_positions(Game* game){
+bool is_out(int x, int y);
+
+void set_positions(Game* game);
+
+bool predict_path(const Game* game, int tolerance, int* y_position){
 	SDL_Rect* ball_rect = obj_rect(game->world.ball);
-	SDL_Rect* player_rect = obj_rect(game->world.player);
-	SDL_Rect* enemy_rect = obj_rect(game->world.enemy);
+	int x = ball_rect->x;
+	int y = ball_rect->y;
 
-	ball_rect->x = SCREEN_WIDTH/2 - ball_rect->w/2;
-	ball_rect->y = SCREEN_HEIGHT/2 - ball_rect->h/2;
+	int x_vel_ball = game->x_dir_ball * game->x_speed_ball;
+	int y_vel_ball = game->y_dir_ball * game->y_speed_ball;
+	
+	while(!is_out(x, y) && !is_collied(ball_rect, obj_rect(game->world.enemy))){
+		x += x_vel_ball;
+		y += y_vel_ball;
+	}
 
-	player_rect->y = SCREEN_HEIGHT/2 - player_rect->h/2;
+	*y_position = y - y_vel_ball;
 
-	enemy_rect->x = SCREEN_WIDTH - enemy_rect->w;
-	enemy_rect->y = SCREEN_HEIGHT/2 - enemy_rect->h/2;
-
+	return x > SCREEN_WIDTH * tolerance/100;
 }
+
+
 
 void game_update(Game* game, int delta_t){
 	Obj *ball = game->world.ball;
 	SDL_Rect* ball_rect = obj_rect(ball);
 
+	Obj *player = game->world.player;
+	SDL_Rect* player_rect = obj_rect(player);
 
 	Obj *enemy = game->world.enemy;
 	SDL_Rect* enemy_rect = obj_rect(enemy);
 
-	if (ball_rect->x > SCREEN_WIDTH/2) {
-		game->y_accel = (enemy_rect->y - ball_rect->y ? 1 : -1) * 10;
+	int y_position;
+	
+	if(predict_path(game, 75, &y_position)){
+		int y_vel = (y_position - enemy_rect->h/2 - enemy_rect->y >= 0 ? 1 : -1) * SPEED;
+
+		if(!is_out(0, y_vel + enemy_rect->y) && !is_out(0, y_vel + enemy_rect->y + enemy_rect->h)){
+			enemy_rect->y += y_vel;
+		}
 	}
 
 
-	if(enemy_rect->y + game->y_accel >= 0 && enemy_rect->y + enemy_rect->h + game->y_accel <= SCREEN_HEIGHT)
-		enemy_rect->y += game->y_accel;
 
-	if(is_collied(ball, game->world.player) || is_collied(ball, game->world.enemy)){
-		game->x_vel_ball = -game->x_vel_ball;
+
+	if(is_collied(ball, player)){
+		game->x_dir_ball = -game->x_dir_ball;
+		game->x_speed_ball+=0.01f;
+
+		int y_dir = ball_rect->y - player_rect->y + player_rect->h/2  >=0 ? 1 : -1;
+		game->y_dir_ball *= y_dir;
 	}
+	
+	if(is_collied(ball, enemy)){
+		game->x_dir_ball *= -game->x_dir_ball;
+		game->x_speed_ball+=0.01f;
 		
+		int y_dir = ball_rect->y - enemy_rect->y + enemy_rect->h/2  >=0 ? 1 : -1;
+		game->y_dir_ball *= y_dir;
+	}
+
 	if(ball_rect->y < 0 || ball_rect->y + ball_rect->h > SCREEN_HEIGHT)
-		game->y_vel_ball = -game->y_vel_ball;
+		game->y_dir_ball = -game->y_dir_ball;
 
 
 	if(ball_rect->x < 0){
 		int score = atoi(GetTextValue(game->world.enemy_score));
 		score ++;
-		
+
+		game->x_dir_ball = -game->x_dir_ball;
+
 		char new_score[3];
 		sprintf(new_score, "%02d", score);
 
@@ -62,23 +93,25 @@ void game_update(Game* game, int delta_t){
 	if(ball_rect->x > SCREEN_WIDTH){
 		int score = atoi(GetTextValue(game->world.player_score));
 		score ++;
-		
+
+		game->x_dir_ball = -game->x_dir_ball;
+
 		char new_score[3];
 		sprintf(new_score, "%02d", score);
 
 		SetTextValue(game->world.player_score, new_score);
 		set_positions(game);
 	}
-	
 
-	ball_rect->x += game->x_vel_ball;
-	ball_rect->y += game->y_vel_ball;
+
+	ball_rect->x += game->x_dir_ball * game->x_speed_ball;
+	ball_rect->y += game->y_dir_ball * game->y_speed_ball;
 
 }
 
 void game_input(Game* game, const Uint8* keys){
 	SDL_Rect* player_rect = obj_rect(game->world.player);	
-	int diry = (keys[SDL_SCANCODE_DOWN] - keys[SDL_SCANCODE_UP]) * 5;
+	int diry = (keys[SDL_SCANCODE_DOWN] - keys[SDL_SCANCODE_UP]) * SPEED;
 
 	if(player_rect->y + diry >= 0 && player_rect->y + player_rect->h + diry <= SCREEN_HEIGHT)
 		player_rect->y += diry;
@@ -137,7 +170,7 @@ int game_initialize(Game* game){
 	SetTextValue(game->world.player_score, "00");
 	SDL_Rect *player_counter_rect = GetTextRect(game->world.player_score);
 	player_counter_rect->x = SCREEN_WIDTH/4 - player_counter_rect->w/2;
-	
+
 	if(!game->world.player_score){
 		fprintf(stderr, "Error creating text:", TTF_GetError());
 		return EXIT_FAILURE;
@@ -147,7 +180,7 @@ int game_initialize(Game* game){
 	game->world.enemy_score = NewText(FONT, 24, color);
 	SetTextValue(game->world.enemy_score, "00");
 	SDL_Rect *enemy_counter_rect = GetTextRect(game->world.enemy_score);
-	enemy_counter_rect->x = SCREEN_WIDTH/4 + SCREEN_WIDTH/2 - enemy_counter_rect->w/2;
+	enemy_counter_rect->x =  SCREEN_WIDTH * 3/4 - enemy_counter_rect->w/2;
 
 	if(!game->world.enemy_score){
 		fprintf(stderr, "Error creating text:", TTF_GetError());
@@ -173,15 +206,16 @@ int game_initialize(Game* game){
 
 	SDL_Rect enemy_rect = (SDL_Rect){0, 0, 10, 50};
 	game->world.enemy =  obj_create(enemy_rect, color);
-	
+
 
 	if(!game->world.enemy){
 		fprintf(stderr, "Error creating enemy.");
 		return EXIT_FAILURE;
 	}
 
-	game->x_vel_ball = -1;
-	game->y_vel_ball = 1;
+
+	game->x_dir_ball = 1;
+	game->y_dir_ball = 1;
 
 	set_positions(game);
 
@@ -208,11 +242,40 @@ void game_dispose(Game* game){
 
 	obj_destroy(game->world.ball);
 	game->world.ball = NULL;
-	
+
 
 	game->window = NULL;
 	game->renderer = NULL;
 
 	TTF_Quit();
 	SDL_Quit();
+}
+
+void set_positions(Game* game){
+	SDL_Rect* ball_rect = obj_rect(game->world.ball);
+	SDL_Rect* player_rect = obj_rect(game->world.player);
+	SDL_Rect* enemy_rect = obj_rect(game->world.enemy);
+
+	ball_rect->x = SCREEN_WIDTH/2 - ball_rect->w/2;
+	ball_rect->y = SCREEN_HEIGHT/2 - ball_rect->h/2;
+
+	game->x_speed_ball = 3;
+
+	player_rect->y = SCREEN_HEIGHT/2 - player_rect->h/2;
+
+	enemy_rect->x = SCREEN_WIDTH - enemy_rect->w;
+	enemy_rect->y = SCREEN_HEIGHT/2 - enemy_rect->h/2;
+
+	game->x_speed_ball = 3;
+	game->y_speed_ball = 1;
+}
+
+bool is_out(int x, int y){
+	if(x < 0 || x > SCREEN_WIDTH)
+		return true;
+
+	if(y < 0 || y > SCREEN_HEIGHT)
+		return true;
+
+	return false;
 }

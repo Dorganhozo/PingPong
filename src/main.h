@@ -14,5 +14,5 @@
 #define SCREEN_WIDTH 600
 #define SCREEN_HEIGHT 400
 #define DELAY 16
-#define SPEED 2
+#define SPEED 5
 #define FONT "font.ttf"
