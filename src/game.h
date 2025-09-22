@@ -18,8 +18,8 @@ typedef struct{
 	SDL_Renderer* renderer;
 	SDL_Window* window;
 	int is_running;
-	int x_vel_ball, y_vel_ball;
-	int x_accel,  y_accel;
+	int x_speed_ball, y_speed_ball;
+	int x_dir_ball, y_dir_ball;
 } Game;
 
 int game_initialize(Game* game);
