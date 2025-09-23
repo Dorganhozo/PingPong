@@ -9,5 +9,5 @@ E rode com: `./a.out`
 >você pode usar ambos com: `make && ./a.out`
 
 ## Dependencias
-- sdl2
-- sdl2_ttf
+- sdl2 (libsdl2-dev)
+- sdl2_ttf (libsdl2-ttf-dev)
