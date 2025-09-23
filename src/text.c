@@ -7,21 +7,25 @@
 #include <string.h>
 
 
-struct Text{
+struct Score{
 	TTF_Font* font;
-	char* value;
+	int value;
 	SDL_Color color;
 	SDL_Rect* rect;
 };
 
-void RenderText(Text* text, SDL_Renderer* renderer){
+void RenderScore(Score* score, SDL_Renderer* renderer){
 	
-	if(!text){
+	if(!score){
 		fprintf(stderr, "Error drawing text: text is NULL.");
 		return;
 	}
 
-	SDL_Surface* surface = TTF_RenderText_Solid(text->font, text->value, text->color);
+	char text[3];
+
+	sprintf(text, "%02d", score->value);
+
+	SDL_Surface* surface = TTF_RenderText_Solid(score->font, text, score->color);
 
 
 	if(!surface){
@@ -31,7 +35,7 @@ void RenderText(Text* text, SDL_Renderer* renderer){
 		return;
 	}
 
-	SDL_Rect *rect = GetTextRect(text);
+	SDL_Rect *rect = GetScoreRect(score);
 	
 	if(rect->w != surface->w)
 		rect->w = surface->w;
@@ -47,47 +51,47 @@ void RenderText(Text* text, SDL_Renderer* renderer){
 	texture = NULL;
 }
 
-SDL_Rect* GetTextRect(Text* text){
-	if(!text->rect){
-		text->rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
-		if (!text) {
+SDL_Rect* GetScoreRect(Score* score){
+	if(!score->rect){
+		score->rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+		if (!score) {
 			fprintf(stderr, "Error creating rect.");
 			return NULL;
 		}
 
-		text->rect->x = 0;
-		text->rect->y = 0;
-		TTF_SizeUTF8(text->font, text->value, &text->rect->w, &text->rect->h);
+		score->rect->x = 0;
+		score->rect->y = 0;
+
+		char text[3];
+		sprintf(text, "%02d", score->value);
+	
+		TTF_SizeUTF8(score->font, text, &score->rect->w, &score->rect->h);
 	}
 
-	return text->rect;
+	return score->rect;
 }
 
-void DestroyText(Text* text){
-	TTF_CloseFont(text->font);
-	free(text->value);
-	free(text->rect);
+void DestroyScore(Score* score){
+	TTF_CloseFont(score->font);
+	free(score->rect);
 
-	text->font = NULL;
-	text->value = NULL;
-	text->rect = NULL;
+	score->font = NULL;
+	score->rect = NULL;
 
-	free(text);
-	text = NULL;
+	free(score);
+	score = NULL;
 }
 
-void SetTextValue(Text *text, const char *value){
-	int length = strlen(value);
-	text->value = (char*)malloc(length);
-	strcpy(text->value, value);
+void SetScoreValue(Score *text, int value){
+	text->value = value;
 }
 
-const char* GetTextValue(Text *text){
+const int GetScoreValue(Score *text){
 	return text->value;
 }
 
-Text* NewText(char* font_path, int size, SDL_Color color){
-	Text* text = (Text*)malloc(sizeof(Text));
+Score* NewScore(char* font_path, int size, SDL_Color color){
+	Score* text = (Score*)malloc(sizeof(Score));
 	text->font = TTF_OpenFont(font_path, size);
 	text->color = color;
 	text->rect = NULL;
