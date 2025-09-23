@@ -8,8 +8,8 @@ typedef struct {
 	Obj* player;
 	Obj* enemy;
 	Obj* ball;
-	Text* player_score;
-	Text* enemy_score;
+	Score* player_score;
+	Score* enemy_score;
 } World;
 
 

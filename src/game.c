@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 bool is_out(int x, int y);
 
@@ -15,20 +16,25 @@ void set_positions(Game* game);
 
 bool predict_path(const Game* game, int tolerance, int* y_position){
 	SDL_Rect* ball_rect = obj_rect(game->world.ball);
+	SDL_Rect* enemy_rect = obj_rect(game->world.enemy);
+
 	int x = ball_rect->x;
 	int y = ball_rect->y;
 
 	int x_vel_ball = game->x_dir_ball * game->x_speed_ball;
 	int y_vel_ball = game->y_dir_ball * game->y_speed_ball;
 	
-	while(!is_out(x, y) && !is_collied(ball_rect, obj_rect(game->world.enemy))){
+	while(!is_out(x, y)){
 		x += x_vel_ball;
 		y += y_vel_ball;
-	}
 
+		if(y >= enemy_rect->y && y <= enemy_rect->y + enemy_rect->h && x + enemy_rect->w >= SCREEN_WIDTH )
+			return false;
+	}
+ 	
 	*y_position = y - y_vel_ball;
 
-	return x > SCREEN_WIDTH * tolerance/100;
+	return x > SCREEN_WIDTH * (float)tolerance/100;
 }
 
 
@@ -43,9 +49,14 @@ void game_update(Game* game, int delta_t){
 	Obj *enemy = game->world.enemy;
 	SDL_Rect* enemy_rect = obj_rect(enemy);
 
+	int player_score = GetScoreValue(game->world.player_score);
+	int enemy_score = GetScoreValue(game->world.enemy_score);
+
 	int y_position;
-	
-	if(predict_path(game, 75, &y_position)){
+	int humility =  (enemy_score - player_score);
+	int tolerance = 99 + rand()%2 + humility;
+
+	if(predict_path(game, tolerance, &y_position)){
 		int y_vel = (y_position - enemy_rect->h/2 - enemy_rect->y >= 0 ? 1 : -1) * SPEED;
 
 		if(!is_out(0, y_vel + enemy_rect->y) && !is_out(0, y_vel + enemy_rect->y + enemy_rect->h)){
@@ -77,29 +88,25 @@ void game_update(Game* game, int delta_t){
 
 
 	if(ball_rect->x < 0){
-		int score = atoi(GetTextValue(game->world.enemy_score));
+		int score = GetScoreValue(game->world.enemy_score);
 		score ++;
 
 		game->x_dir_ball = -game->x_dir_ball;
 
-		char new_score[3];
-		sprintf(new_score, "%02d", score);
 
-		SetTextValue(game->world.enemy_score, new_score);
+		SetScoreValue(game->world.enemy_score, score);
 		set_positions(game);
 	}
 
 
 	if(ball_rect->x > SCREEN_WIDTH){
-		int score = atoi(GetTextValue(game->world.player_score));
+		int score = GetScoreValue(game->world.player_score);
 		score ++;
 
 		game->x_dir_ball = -game->x_dir_ball;
 
-		char new_score[3];
-		sprintf(new_score, "%02d", score);
 
-		SetTextValue(game->world.player_score, new_score);
+		SetScoreValue(game->world.player_score, score);
 		set_positions(game);
 	}
 
@@ -126,8 +133,8 @@ void game_render(const Game *game){
 	obj_render(game->world.enemy, game->renderer);
 	obj_render(game->world.ball, game->renderer);
 
-	RenderText(game->world.player_score, game->renderer);
-	RenderText(game->world.enemy_score, game->renderer);
+	RenderScore(game->world.player_score, game->renderer);
+	RenderScore(game->world.enemy_score, game->renderer);
 
 	SDL_RenderPresent(game->renderer);
 }
@@ -135,6 +142,7 @@ void game_render(const Game *game){
 
 
 int game_initialize(Game* game){
+	srand(time(0));
 	*game = (Game){ NULL, NULL, NULL, .is_running = 1 };
 
 	if(SDL_Init(SDL_INIT_EVERYTHING)){
@@ -166,9 +174,9 @@ int game_initialize(Game* game){
 
 	SDL_Color color = (SDL_Color){255, 255, 255};
 
-	game->world.player_score = NewText(FONT, 24, color);
-	SetTextValue(game->world.player_score, "00");
-	SDL_Rect *player_counter_rect = GetTextRect(game->world.player_score);
+	game->world.player_score = NewScore(FONT, 24, color);
+	SetScoreValue(game->world.player_score, 0);
+	SDL_Rect *player_counter_rect = GetScoreRect(game->world.player_score);
 	player_counter_rect->x = SCREEN_WIDTH/4 - player_counter_rect->w/2;
 
 	if(!game->world.player_score){
@@ -177,9 +185,9 @@ int game_initialize(Game* game){
 	}
 
 
-	game->world.enemy_score = NewText(FONT, 24, color);
-	SetTextValue(game->world.enemy_score, "00");
-	SDL_Rect *enemy_counter_rect = GetTextRect(game->world.enemy_score);
+	game->world.enemy_score = NewScore(FONT, 24, color);
+	SetScoreValue(game->world.enemy_score, 0);
+	SDL_Rect *enemy_counter_rect = GetScoreRect(game->world.enemy_score);
 	enemy_counter_rect->x =  SCREEN_WIDTH * 3/4 - enemy_counter_rect->w/2;
 
 	if(!game->world.enemy_score){
@@ -225,13 +233,14 @@ int game_initialize(Game* game){
 }
 
 void game_dispose(Game* game){
+
 	SDL_DestroyRenderer(game->renderer);
 	SDL_DestroyWindow(game->window);
 
-	DestroyText(game->world.player_score);
+	DestroyScore(game->world.player_score);
 	game->world.player_score = NULL;
 
-	DestroyText(game->world.enemy_score);
+	DestroyScore(game->world.enemy_score);
 	game->world.enemy_score =  NULL;
 
 	obj_destroy(game->world.player);

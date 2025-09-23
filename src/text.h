@@ -2,11 +2,11 @@
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_ttf.h>
 
-typedef struct Text Text;
+typedef struct Score Score;
 
-void RenderText(Text* text, SDL_Renderer* renderer);
-void SetTextValue(Text* text, const char* value);
-const char* GetTextValue(Text* text);
-SDL_Rect* GetTextRect(Text* text);
-void DestroyText(Text* text);
-Text* NewText(char* font_path, int size, SDL_Color color);
+void RenderScore(Score* score, SDL_Renderer* renderer);
+void SetScoreValue(Score* score, int value);
+const int GetScoreValue(Score* score);
+SDL_Rect* GetScoreRect(Score* score);
+void DestroyScore(Score* score);
+Score* NewScore(char* font_path, int size, SDL_Color color);
