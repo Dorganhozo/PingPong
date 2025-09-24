@@ -17,9 +17,9 @@ typedef struct{
 	World world;
 	SDL_Renderer* renderer;
 	SDL_Window* window;
-	int is_running;
-	int x_speed_ball, y_speed_ball;
-	int x_dir_ball, y_dir_ball;
+	bool is_running;
+	float x_speed_ball, y_speed_ball;
+	float x_dir_ball, y_dir_ball;
 } Game;
 
 int game_initialize(Game* game);

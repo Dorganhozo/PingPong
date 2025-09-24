@@ -1,13 +1,12 @@
 #include "game.h"
 #include "main.h"
-#include "object.h"
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_scancode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
 
 bool is_out(int x, int y);
@@ -15,26 +14,25 @@ bool is_out(int x, int y);
 void set_positions(Game* game);
 
 bool predict_path(const Game* game, int tolerance, int* y_position){
-	SDL_Rect* ball_rect = obj_rect(game->world.ball);
+	SDL_Rect ball_rect = *obj_rect(game->world.ball);
 	SDL_Rect* enemy_rect = obj_rect(game->world.enemy);
 
-	int x = ball_rect->x;
-	int y = ball_rect->y;
 
 	int x_vel_ball = game->x_dir_ball * game->x_speed_ball;
 	int y_vel_ball = game->y_dir_ball * game->y_speed_ball;
 	
-	while(!is_out(x, y)){
-		x += x_vel_ball;
-		y += y_vel_ball;
+	while(!is_out(ball_rect.x, ball_rect.y)){
+		ball_rect.x += x_vel_ball;
+		ball_rect.y += y_vel_ball;
 
-		if(y >= enemy_rect->y && y <= enemy_rect->y + enemy_rect->h && x + enemy_rect->w >= SCREEN_WIDTH )
+		//if(y >= enemy_rect->y && y <= enemy_rect->y + enemy_rect->h && x >= enemy_rect->x )
+		if(SDL_HasIntersection(&ball_rect, enemy_rect))
 			return false;
 	}
  	
-	*y_position = y - y_vel_ball;
+	*y_position = ball_rect.y - y_vel_ball;
 
-	return x > SCREEN_WIDTH * (float)tolerance/100;
+	return ball_rect.x > SCREEN_WIDTH * (float)tolerance/100;
 }
 
 
@@ -65,23 +63,20 @@ void game_update(Game* game, int delta_t){
 	}
 
 
-
-
-	if(is_collied(ball, player)){
-		game->x_dir_ball = -game->x_dir_ball;
-		game->x_speed_ball+=0.01f;
-
-		int y_dir = ball_rect->y - player_rect->y + player_rect->h/2  >=0 ? 1 : -1;
-		game->y_dir_ball *= y_dir;
-	}
+	SDL_Rect* actor_rect = NULL;
 	
-	if(is_collied(ball, enemy)){
-		game->x_dir_ball *= -game->x_dir_ball;
-		game->x_speed_ball+=0.01f;
-		
-		int y_dir = ball_rect->y - enemy_rect->y + enemy_rect->h/2  >=0 ? 1 : -1;
-		game->y_dir_ball *= y_dir;
+	if(SDL_HasIntersection(ball_rect, enemy_rect) && (actor_rect = enemy_rect) ||
+	   SDL_HasIntersection(ball_rect, player_rect) && (actor_rect = player_rect)){
+		game->x_dir_ball = -game->x_dir_ball;
+		game->x_speed_ball += 0.2f;
+
+		int y_dis = (ball_rect->y + ball_rect->h/2) - (actor_rect->y + actor_rect->h/2);
+		int y_dir = y_dis >=0 ? 1 : -1;
+
+		game->y_dir_ball = -y_dir;
+		game->y_speed_ball = game->x_speed_ball * abs(y_dis)/((float)actor_rect->h/2);
 	}
+
 
 	if(ball_rect->y < 0 || ball_rect->y + ball_rect->h > SCREEN_HEIGHT)
 		game->y_dir_ball = -game->y_dir_ball;
@@ -111,8 +106,17 @@ void game_update(Game* game, int delta_t){
 	}
 
 
-	ball_rect->x += game->x_dir_ball * game->x_speed_ball;
-	ball_rect->y += game->y_dir_ball * game->y_speed_ball;
+	SDL_Rect dest_rect = *ball_rect;
+	float x_vel = game->x_dir_ball * game->x_speed_ball;
+	float y_vel = game->y_dir_ball * game->y_speed_ball;
+
+	dest_rect.x += x_vel;
+	dest_rect.y += y_vel;
+
+	if(!SDL_HasIntersection(actor_rect, &dest_rect)){
+		ball_rect->x += x_vel;
+		ball_rect->y += y_vel;
+	}
 
 }
 
@@ -145,7 +149,7 @@ int game_initialize(Game* game){
 	srand(time(0));
 	*game = (Game){ NULL, NULL, NULL, .is_running = 1 };
 
-	if(SDL_Init(SDL_INIT_EVERYTHING)){
+	if(SDL_Init(SDL_INIT_VIDEO)){
 		fprintf(stderr, "Error initializing SDL: %s\n", SDL_GetError());
 		return EXIT_FAILURE;
 	}
