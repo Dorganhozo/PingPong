@@ -1,5 +1,6 @@
 #include "object.h"
 #include <SDL2/SDL_render.h>
+#include <stdbool.h>
 
 struct Obj{
 	SDL_Rect rect;
@@ -11,10 +12,6 @@ void obj_render(const Obj *obj, SDL_Renderer *renderer){
 	SDL_RenderFillRect(renderer, &obj->rect);
 }
 
-int is_collied(const Obj *a, const Obj *b){
-	return a->rect.x <= b->rect.x + b->rect.w && a->rect.x + a->rect.w >= b->rect.x &&
-	       a->rect.y <= b->rect.y + b->rect.h && a->rect.y + a->rect.h >= b->rect.y;
-}
 
 Obj* obj_create(SDL_Rect rect, SDL_Color color){
 	Obj* obj = (Obj*)malloc(sizeof(Obj));
