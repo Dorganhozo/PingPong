@@ -20,19 +20,20 @@ bool predict_path(const Game* game, int tolerance, int* y_position){
 
 	int x_vel_ball = game->x_dir_ball * game->x_speed_ball;
 	int y_vel_ball = game->y_dir_ball * game->y_speed_ball;
+
+	float tolerance_percent = (float)tolerance/100;
 	
-	while(!is_out(ball_rect.x, ball_rect.y)){
+	while(!is_out(ball_rect.x/tolerance_percent, ball_rect.y)){
 		ball_rect.x += x_vel_ball;
 		ball_rect.y += y_vel_ball;
 
-		//if(y >= enemy_rect->y && y <= enemy_rect->y + enemy_rect->h && x >= enemy_rect->x )
 		if(SDL_HasIntersection(&ball_rect, enemy_rect))
 			return false;
 	}
  	
 	*y_position = ball_rect.y - y_vel_ball;
 
-	return ball_rect.x > SCREEN_WIDTH * (float)tolerance/100;
+	return ball_rect.x > SCREEN_WIDTH * tolerance_percent;
 }
 
 
@@ -51,8 +52,10 @@ void game_update(Game* game, int delta_t){
 	int enemy_score = GetScoreValue(game->world.enemy_score);
 
 	int y_position;
+
 	int humility =  (enemy_score - player_score);
-	int tolerance = 99 + rand()%2 + humility;
+
+	int tolerance = 100 + humility;
 
 	if(predict_path(game, tolerance, &y_position)){
 		int y_vel = (y_position - enemy_rect->h/2 - enemy_rect->y >= 0 ? 1 : -1) * SPEED;
@@ -61,7 +64,6 @@ void game_update(Game* game, int delta_t){
 			enemy_rect->y += y_vel;
 		}
 	}
-
 
 	SDL_Rect* actor_rect = NULL;
 	
@@ -94,7 +96,7 @@ void game_update(Game* game, int delta_t){
 	}
 
 
-	if(ball_rect->x > SCREEN_WIDTH){
+	if(ball_rect->x + ball_rect->w > SCREEN_WIDTH){
 		int score = GetScoreValue(game->world.player_score);
 		score ++;
 
